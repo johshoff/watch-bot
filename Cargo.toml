@@ -1,0 +1,11 @@
+[package]
+name = "watch-bot"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+handlebars = "4.1.2"
+serde_json = "1.0.67"
+serde = { version = "1.0.67", features = ["derive"] }
+ureq = { version = "2.2.0", features = ["json"] }
+md5 = "0.7.0"
