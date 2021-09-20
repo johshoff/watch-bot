@@ -4,6 +4,7 @@ use std::{
     io::BufReader,
 };
 
+use clap::{App, Arg};
 use handlebars::Handlebars;
 use serde::Deserialize;
 use serde_json::Value;
@@ -56,7 +57,19 @@ fn update_content(url: &str, new_content: &str) -> Result<(), std::io::Error> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let config = read_config("config.json")?;
+    let matches = App::new("watch-bot")
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("FILE")
+                .takes_value(true)
+                .help("Specify config file"),
+        )
+        .get_matches();
+
+    let config_file = matches.value_of("config").unwrap_or("config.json");
+    let config = read_config(config_file)?;
 
     for check in config.checks {
         let rendered = perform_check(&check)
