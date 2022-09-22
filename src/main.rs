@@ -19,6 +19,7 @@ struct Check {
 struct Config {
     checks: Vec<Check>,
     slack_url: Option<String>,
+    content_cache_prefix: Option<String>,
 }
 
 fn read_config(path: &str) -> Result<Config, Box<dyn Error>> {
@@ -36,14 +37,8 @@ fn perform_check(check: &Check) -> Result<String, Box<dyn Error>> {
     Ok(Handlebars::new().render_template(&template_string, &data)?)
 }
 
-/// Filename for previously written content for a URL
-fn content_filename(url: &str) -> String {
-    format!(".last-{:x}", md5::compute(url))
-}
-
 /// Check if the content has changed since last update (or if it's never been posted)
-fn content_has_changed(url: &str, new_content: &str) -> bool {
-    let filename = content_filename(url);
+fn content_has_changed(filename: &str, new_content: &str) -> bool {
     if let Ok(last_content) = fs::read_to_string(filename) {
         return new_content != last_content;
     }
@@ -51,8 +46,7 @@ fn content_has_changed(url: &str, new_content: &str) -> bool {
 }
 
 /// Update contents file
-fn update_content(url: &str, new_content: &str) -> Result<(), std::io::Error> {
-    let filename = content_filename(url);
+fn update_content(filename: &str, new_content: &str) -> Result<(), std::io::Error> {
     fs::write(filename, new_content)
 }
 
@@ -75,7 +69,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let rendered = perform_check(&check)
             .unwrap_or_else(|err| format!("*Unhandled error:*\n{}", err.to_string()));
 
-        if !content_has_changed(&check.url, &rendered) {
+        // Filename for previously written content for a URL
+        let prefix = config.content_cache_prefix.as_deref().unwrap_or(".last-");
+        let content_filename = format!("{}{:x}", prefix, md5::compute(check.url));
+
+        if !content_has_changed(&content_filename, &rendered) {
             continue;
         }
 
@@ -85,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("{}", rendered);
         }
 
-        update_content(&check.url, &rendered)?;
+        update_content(&content_filename, &rendered)?;
     }
 
     Ok(())
